@@ -295,11 +295,21 @@ const Game = () => {
    console.log("Selected Player Color:", selectedColor);
    const [redVal  , setRedVal]  =  useState() ;
    
-   const [joinedPlayers, setJoinedPlayers]  = useState({
-    red: false,
-    yellow: false,
-    blue: false,
-    green: false
+  //  const [joinedPlayers, setJoinedPlayers]  = useState({
+  //   red: false,
+  //   yellow: false,
+  //   blue: false,
+  //   green: false
+  // });
+
+  const [joinedPlayers, setJoinedPlayers] = useState(() => {
+    const storedPlayers = localStorage.getItem("joinedPlayers");
+    return storedPlayers ? JSON.parse(storedPlayers) : {
+      red: false,
+      yellow: false,
+      blue: false,
+      green: false
+    };
   });
   
 
@@ -451,6 +461,7 @@ const Game = () => {
   //     }));
   //     lastSentState.current = joinedPlayers;  // ✅ Update last sent state
   // }
+   localStorage.setItem("joinedPlayers", JSON.stringify(joinedPlayers));
         
   } , [joinedPlayers]);
 
