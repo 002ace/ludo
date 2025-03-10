@@ -4,7 +4,6 @@ import { getUser  , gamedetails} from "../utils/userSlice";
 import { useLocation } from "react-router-dom";
 import wss from './socket';
 
-
 class Player {
   constructor(el, start, end, stripStart) {
     this.playerStatus = false;
@@ -18,7 +17,6 @@ class Player {
     this.steps = new Array(4).fill(0);
   }
 
-
   initializeElements() {
     const elements = document.getElementsByClassName(this.color);
     for (let i = 0; i < elements.length; i++) {
@@ -28,13 +26,10 @@ class Player {
 
   setsubStatus(i) {
     this.status[i] = false;
-    console.log("nnnnnn" , this.status[i] )
   }
-  
+
   setSteps(i) {
     this.steps[i] = 0;
-    console.log("mmm" , this.steps[i])
-
   }
 
   checkStatus() {
@@ -113,9 +108,10 @@ class Player {
       }
     });
   }
-  
-  //  steps
+
   movePlayer(el, val, gotiSound, playerRefs, getPlayerButtonNumber, setButtonStates, setShowPopup, setPopupMessage) {
+
+    console.log(`Moving player ${this.color}, token ${el}, steps ${val}`);
     gotiSound();
     let dest = 0;
     let fl = false;
@@ -139,16 +135,9 @@ class Player {
       if (this.id[i]?.id === el.toString()) {
         this.status[i] = true;
         this.id[i].classList.remove("btnzoom");
-        console.log("this is->" , this.steps[i]);
-        this.steps[i] +=val;  //  this  line is used to  upgrade the  step
-        console.log("this is after->" , this.steps[i]);
 
-
-       
+        this.steps[i] += val;
         dest = this.start + this.steps[i];
-        console.log("this is dest line")
-        console.log(dest);
-     
 
         if (this.steps[i] > 50) {
           const entryPoints = {
@@ -158,7 +147,7 @@ class Player {
             green: dest >= 90
           };
 
-          const hasCompletedCircuit = this.start === 1 && entryPoints.red ||    // Red
+          const hasCompletedCircuit = this.start === 1 && entryPoints.red || // Red
                                     this.start === 14 && entryPoints.yellow || // Yellow
                                     this.start === 27 && entryPoints.blue || // Blue
                                     this.start === 40 && entryPoints.green; // Green
@@ -206,11 +195,10 @@ class Player {
         } else if (dest > 52) {
           dest -= 52;
         }
-        
-        //move->define movement of goti
+
         const targetElement = document.getElementById(dest.toString());
         const currentElement = this.id[i];
-         //validation of ludo game
+
         if (targetElement && currentElement) {
           // For home strip moves, check if destination is already occupied by same color
           if (dest >= this.stripStart && dest <= this.stripStart + 4) {
@@ -286,32 +274,14 @@ class Player {
   }
 }
 
+
 const Game = () => {
 
    const location = useLocation();
    const searchParams = new URLSearchParams(location.search);
    const selectedColor = searchParams.get("color"); // Extracts "?color=red"
 
-   console.log("Selected Player Color:", selectedColor);
-   const [redVal  , setRedVal]  =  useState() ;
-   
-  //  const [joinedPlayers, setJoinedPlayers]  = useState({
-  //   red: false,
-  //   yellow: false,
-  //   blue: false,
-  //   green: false
-  // });
-
-  const [joinedPlayers, setJoinedPlayers] = useState(() => {
-    const storedPlayers = localStorage.getItem("joinedPlayers");
-    return storedPlayers ? JSON.parse(storedPlayers) : {
-      red: false,
-      yellow: false,
-      blue: false,
-      green: false
-    };
-  });
-  
+    console.log("Selected Player Color:", selectedColor);
 
   // State management
     const  dispatch =  useDispatch();
@@ -351,7 +321,7 @@ const Game = () => {
     const Order = createPlayerOrder(rang);
    
 
-    console.log(Order)
+   console.log(Order)
 
     console.log(JSON.stringify(gameData));
 
@@ -381,22 +351,46 @@ const Game = () => {
 
 
 
-    const sendMess = (id , active)=>{
-      console.log("send message work")
-       ws?.send(JSON.stringify({
-             type:"update",
-             roomCode:"room002",
-             payload:{
-                message:{
+    // const sendMess = (id , active)=>{
+    //   console.log("send message work")
+    //    wss?.send(JSON.stringify({
+    //          type:"update",
+    //          roomCode:"room002",
+    //          payload:{
+    //             message:{
   
-                     "playerId": userId,
-                     "player":id,
-                     "cubes" :cubes,
-                     "active" : active
-              }
-             }
-       }))
+    //                  "playerId": userId,
+    //                  "player":id,
+    //                  "cubes" :cubes,
+    //                   active: getNextPlayer(active)
+    //           }
+    //          }
+    //    }))
+    // }
+
+    const sendMess = (id, active) => {
+      console.log("send message work")
+      if (wss?.readyState === WebSocket.OPEN) {
+        wss.send(JSON.stringify({
+          type: "update",
+          roomCode: "room002",
+          payload: {
+            message: {
+              playerId: userId,
+              player: id,
+              cubes: die, // Include the current dice value
+              // active: die === 6 ? active :  getNextPlayer(active), // Calculate next player
+              active : active ,
+              nextPlayer:getNextPlayer(active),
+              moveType : playerRefs.current[active].status[id % 100 - 1] ? 'move' : 'open'
+            }
+          }
+        }));
+      } else {
+        console.error("WebSocket is not open:", wss?.readyState);
+      }
     }
+    
 
 
      
@@ -447,24 +441,27 @@ const Game = () => {
     [7, "../assets/Dice_1.gif"],
   ]);
 
-  const lastSentState = useRef(null); 
-  useEffect(() => {
 
-  //   if (
-  //     wss.readyState === WebSocket.OPEN &&
-  //     JSON.stringify(lastSentState.current) !== JSON.stringify(joinedPlayers)
-  // ) {
-  //     console.log("📩 Sending sync_state via WebSocket:", joinedPlayers);
-  //     wss.send(JSON.stringify({
-  //         type: "sync_state",
-  //         payload: { joinedPlayers }
-  //     }));
-  //     lastSentState.current = joinedPlayers;  // ✅ Update last sent state
-  // }
-   localStorage.setItem("joinedPlayers", JSON.stringify(joinedPlayers));
-        
-  } , [joinedPlayers]);
+  const [joinedPlayers, setJoinedPlayers] = useState(() => {
+        const storedPlayers = localStorage.getItem("joinedPlayers");
+        return storedPlayers ? JSON.parse(storedPlayers) : {
+          red: false,
+          yellow: false,
+           blue: false,
+          green: false
+       };
+   });
 
+
+   useEffect(()=>{
+    localStorage.setItem("joinedPlayers", JSON.stringify(joinedPlayers));
+    // Object.values(playerRefs.current).forEach(player => {
+    //   player.initializeElements();
+    // });
+   } , [joinedPlayers])
+  
+
+   const [processedMessages, setProcessedMessages] = useState(new Set());
   useEffect(() => {
     // Initialize player elements after component mount
     // const wss  =  new WebSocket("ws://localhost:8080")
@@ -484,153 +481,140 @@ const Game = () => {
   };
 
   wss.onclose = () => console.log("WebSocket Disconnected");
-
- 
-
-   
-    
-   
-     
-  let tokenPositions = {}; // Track positions outside message handler
-  let firstMoves = {}; // Track first moves for each token
-  
   wss.onmessage = (event) => {
   
   try{
  
               const data = JSON.parse(event.data)
               console.log(data);
-              console.log(data.type);
-           
-              if (data.type === "update" ) {
-               console.log("Update received:", data);
-               
-               // Calculate token ID based on player number
-               const tokenId = data.payload.message.player 
-               const cubes = data.payload.message.cubes;
-               
-               
-               console.log("Token ID:", tokenId);
-               
-               // Check if this is the first move for this token
-               if (!firstMoves[tokenId]) {
-                   // First move - move to starting position
-                   firstMoves[tokenId] = true;
-                   tokenPositions[tokenId] = 1; // Set to starting position
-                   
-                   // Get player's starting position based on color/player number
-                   const startingPositions = {
-                       1: 1,  // Red starts at position 1
-                       2: 14, // Yellow starts at position 14
-                       3: 27, // Blue starts at position 27
-                       4: 40  // Green starts at position 40
-                   };
-                   
-                   const playerNum = Math.floor(tokenId / 100);
-                   const startPos = startingPositions[playerNum];
-                   
-                   const currentElement = document.getElementById(tokenId.toString());
-                   const targetElement = document.getElementById(startPos.toString());
-                   
-                   if (currentElement && targetElement) {
-                       const rectTarget = targetElement.getBoundingClientRect();
-                       const rectCurrent = currentElement.getBoundingClientRect();
-                       
-                       const translateX = rectTarget.left - rectCurrent.left;
-                       const translateY = rectTarget.top - rectCurrent.top;
-                       
-                       currentElement.style.transition = 'transform 0.5s ease';
-                       currentElement.style.transform = `translate(${translateX}px, ${translateY}px)`;
-                       currentElement.classList.add("moving");
-                       
-                       setTimeout(() => {
-                           targetElement.appendChild(currentElement);
-                           currentElement.style.transform = "";
-                           currentElement.style.transition = "";
-                           currentElement.classList.remove("moving");
-                       }, 500);
+               // if (data.type === "update") {
+              //   const { player: tokenId, cubes: diceValue, active: nextPlayer } = data.payload.message;
+                
+              //   // Get color from token ID
+              //   const playerNum = Math.floor(tokenId / 100);
+              //   const colorMap = { 1: 'red', 2: 'yellow', 3: 'blue', 4: 'green' };
+              //   const color = colorMap[playerNum];
+                
+              //   if (color && playerRefs.current[color]) {
+              //     // Move the token
+              //     playerRefs.current[color].movePlayer(
+              //       tokenId,
+              //       diceValue,
+              //       gotiSound,
+              //       playerRefs,
+              //       getPlayerButtonNumber,
+              //       setButtonStates,
+              //       setShowPopup,
+              //       setPopupMessage
+              //     );
+            
+              //     // Update game state
+              //     setDie(0);
+              //     setActive(nextPlayer);
+                  
+              //     // Update button states
+              //     const nextPlayerNumber = getPlayerButtonNumber(nextPlayer);
+              //     setButtonStates(prev => ({
+              //       ...prev,
+              //       [`btn${nextPlayerNumber}`]: false
+              //     }));
+                  
+              //     updateZoomHighlight(nextPlayer);
+              //   }
+              // }
+              // playerId: userId,
+              // player: id,
+              // cubes: die, // Include the current dice value
+              // active: die === 6 ? active :  getNextPlayer(active), // Calculate next player
+              // moveType : playerRefs.current[active].status[id % 100 - 1] ? 'move' : 'open'
+               if(data.type === "update")
+              {
+                    const id  = data.payload.message.player
+                    const die =  data.payload.message.cubes;
+                    const  active  =  data.payload.message.active ;
+                    const  moveType  =  data.payload.message.moveType ;
 
-                     
-                   }
-               } else {
-                   // Subsequent moves - add to current position
-                   const nextPlayer  =  data.payload.message.active
-                   tokenPositions[tokenId] = (tokenPositions[tokenId] || 0) + cubes;
-                   const totalPosition = tokenPositions[tokenId];
-                   
-                   console.log("Current position:", totalPosition);
-                   
-                   const currentElement = document.getElementById(tokenId.toString());
-                   
-                   // Handle wrapping around the board
-                   let destPosition = totalPosition;
-                   if (destPosition > 52) {
-                       destPosition = destPosition - 52;
-                   }
-                   
-                   const targetElement = document.getElementById(destPosition.toString());
-                   
-                   if (currentElement && targetElement) {
-                       const rectTarget = targetElement.getBoundingClientRect();
-                       const rectCurrent = currentElement.getBoundingClientRect();
-                       
-                       const translateX = rectTarget.left - rectCurrent.left;
-                       const translateY = rectTarget.top - rectCurrent.top;
-                       
-                       currentElement.style.transition = 'transform 0.5s ease';
-                       currentElement.style.transform = `translate(${translateX}px, ${translateY}px)`;
-                       currentElement.classList.add("moving");
-                       
-                       setTimeout(() => {
-                           targetElement.appendChild(currentElement);
-                           currentElement.style.transform = "";
-                           currentElement.style.transition = "";
-                           currentElement.classList.remove("moving");
-                           
-                           // Check for home strip entry
-                           if (totalPosition >= 51) {
-                               const playerColor = Math.floor(tokenId / 100);
-                               const homeStripStart = playerColor * 100 + 10;
-                               const homePosition = document.getElementById(homeStripStart.toString());
-                               
-                               if (homePosition) {
-                                   setTimeout(() => {
-                                       const rectHome = homePosition.getBoundingClientRect();
-                                       const rectToken = currentElement.getBoundingClientRect();
-                                       
-                                       const translateToHome = {
-                                           x: rectHome.left - rectToken.left,
-                                           y: rectHome.top - rectToken.top
-                                       };
-                                       
-                                       currentElement.style.transition = 'transform 0.5s ease';
-                                       currentElement.style.transform = 
-                                           `translate(${translateToHome.x}px, ${translateToHome.y}px)`;
-                                       
-                                       setTimeout(() => {
-                                           homePosition.appendChild(currentElement);
-                                           currentElement.style.transform = "";
-                                           currentElement.style.transition = "";
-                                       }, 500);
-                                   }, 100);
-                               }
-                           }
-                       }, 500);
+                    if (die === 0) {
+                      console.log('No dice roll yet - tokens cannot be moved');
+                      return;
+                    }
 
+                    setButtonStates({
+                      btn1: true,
+                      btn2: true,
+                      btn3: true,
+                      btn4: true
+                    });
 
-                       if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({
-                            type: "turn_update",
-                            currentPlayer: nextPlayer,
-                            nextPlayer: getNextPlayer(nextPlayer) // Get the next player
+                    removeZoomClass();
+                    const currentPlayer = playerRefs.current[active];
+                    const playerNumber = getPlayerButtonNumber(active);
+                    const baseId = playerNumber * 100 + 1;
+
+                    if (!currentPlayer.getElementStatus(id - baseId)) {
+                      // Only allow opening move if dice shows 6
+                      if (die !== 6) {
+                        console.log('Cannot open new token without rolling a 6');
+                        setButtonStates(prev => ({
+                          ...prev,
+                          [`btn${playerNumber}`]: false
                         }));
+                        return;
                       }
-                     
-                   }
-               }
-              } 
-           
-               if(data.type === "dice_roll")
+                      
+                      console.log(`Opening move for token ${id}`);
+                      currentPlayer.openMove(id, gotiSound);
+                      setDie(0);
+                      
+                      setButtonStates(prev => ({
+                        ...prev,
+                        [`btn${playerNumber}`]: false
+                      }));
+                      updateZoomHighlight(active);
+                    } else {
+                      console.log(`Moving existing token ${id} by ${die} steps`);
+                      currentPlayer.movePlayer(
+                        id, 
+                        die, 
+                        gotiSound, 
+                        playerRefs, 
+                        getPlayerButtonNumber, 
+                        setButtonStates,
+                        setShowPopup,
+                        setPopupMessage
+                      );
+                      deactivateSubPlayer();
+                      checkGameWinner();
+                
+                      if (die !== 6) {
+                        const nextPlayer = getNextPlayer(active);
+                        setActive(nextPlayer);
+                        const nextPlayerNumber = getPlayerButtonNumber(nextPlayer);
+                        
+                        setButtonStates(prev => ({
+                          ...prev,
+                          [`btn${nextPlayerNumber}`]: false
+                        }));
+                        updateZoomHighlight(nextPlayer);
+
+                         
+                        wss?.send(JSON.stringify({
+                            type: "turn_update",
+                            currentPlayer: active,
+                            nextPlayer: nextPlayer // Call function here
+                        })); 
+
+                      } else {
+                        setButtonStates(prev => ({
+                          ...prev,
+                          [`btn${playerNumber}`]: false
+                        }));
+                        updateZoomHighlight(active);
+                      }
+                    }
+              }
+
+                 if(data.type === "dice_roll")
                  {  
            
                    const currPlayer  =  data.player ;
@@ -653,16 +637,18 @@ const Game = () => {
                    console.log("sending-data -from roll dice")
                 
                    console.log("WebSocket ReadyState:", wss?.readyState);
-                    wss?.send(JSON.stringify({
-                        type: "turn_update",
-                        currentPlayer: currPlayer,
-                        nextPlayer: getNextPlayer(currPlayer)  // Call function here
-                    }));
+
+                  //  setTimeout(()=>{
+                  //   wss?.send(JSON.stringify({
+                  //       type: "turn_update",
+                  //       currentPlayer: currPlayer,
+                  //       nextPlayer: getNextPlayer(currPlayer)  // Call function here
+                  //   })); } , 5000 )
                 
       
         
         
-              }
+               }
 
               if (data.type === "turn_update") {
                 console.log(`Turn update received: Next player is ${data.nextPlayer}`);
@@ -680,51 +666,39 @@ const Game = () => {
                 updateZoomHighlight(data.nextPlayer);
               }
 
-              if(data.type  === "chat")
-                {   
-                     console.log("helo guys i am under the water")
-                     console.log("Received chat message:", data);
-                     const playerColor = data.payload?.message?.selectedColor;
-                     setJoinedPlayers(prev => {
-                      const updatedState = {
-                          ...prev,
-                          [playerColor]: true,
-                          red: prev.red || (playerColor === "red"),
-                          yellow: prev.yellow || (playerColor === "yellow"),
-                          blue: prev.blue || (playerColor === "blue"),
-                          green: prev.green || (playerColor === "green")
-                      };
-
-                      wss.send(JSON.stringify({
-                        type: "sync_state",
-                        payload: { joinedPlayers: updatedState }
-                       }));
-                      console.log(updatedState, "✅ Updated joinedPlayers inside setJoinedPlayers");
-                      return updatedState;
-                     });
-
-                    
-
-                    
-
-
-              } 
+              if (data.type === "chat") {   
+                console.log("helo guys i am under the water");
+                console.log("Received chat message:", data);
+                const playerColor = data.payload?.message?.selectedColor;
+                setJoinedPlayers(prev => {
+                  const updatedState = {
+                    ...prev,
+                    [playerColor]: true,
+                    red: prev.red || (playerColor === "red"),
+                    yellow: prev.yellow || (playerColor === "yellow"),
+                    blue: prev.blue || (playerColor === "blue"),
+                    green: prev.green || (playerColor === "green")
+                  };
               
-             
-
-              if (data.type === "sync_state") {
-                  console.log("🔄 Syncing full joinedPlayers state:", data.payload.joinedPlayers);
-                  setJoinedPlayers(prev => ({
-                    red: prev.red || data.payload.joinedPlayers.red,
-                    yellow: prev.yellow || data.payload.joinedPlayers.yellow,
-                    blue: prev.blue || data.payload.joinedPlayers.blue,
-                    green: prev.green || data.payload.joinedPlayers.green
-                }));
-                  
+                  wss.send(JSON.stringify({
+                    type: "sync_state",
+                    payload: { joinedPlayers: updatedState }
+                  }));
+                  console.log(updatedState, "✅ Updated joinedPlayers inside setJoinedPlayers");
+                  return updatedState;
+                });
               }
-            
-
-             
+              
+              if (data.type === "sync_state") {
+                console.log("🔄 Syncing full joinedPlayers state:", data.payload.joinedPlayers);
+                setJoinedPlayers(prev => ({
+                  red: prev.red || data.payload.joinedPlayers.red,
+                  yellow: prev.yellow || data.payload.joinedPlayers.yellow,
+                  blue: prev.blue || data.payload.joinedPlayers.blue,
+                  green: prev.green || data.payload.joinedPlayers.green
+                }));
+              }
+              
   }
  catch(error)
  {
@@ -732,14 +706,16 @@ const Game = () => {
  }
 
   };
+  
+  Object.values(playerRefs.current).forEach(player => {
+    player.initializeElements();
+  });
 
 
   return () => wss.close(); // Cleanup WebSocket on unmount
   
 
-    Object.values(playerRefs.current).forEach(player => {
-      player.initializeElements();
-    });
+  
   }, []);
 
   
@@ -852,9 +828,16 @@ const Game = () => {
     
     console.log("console.log click on dice");
 
-    if(pawn !== active )
-    {   console.log("i am here  inside  return statement")
-        return  ;
+    // if(pawn !== active )
+    // {   console.log("i am here  inside  return statement")
+    //     return  ;
+    // }
+
+    if(selectedColor  !== active)
+    { 
+        console.log("i am here  inside  return statement");
+        return ;
+          
     }
     
     console.log(`${active} player is rolling the dice`);
@@ -881,7 +864,7 @@ const Game = () => {
     }
 
     if (wss && wss.readyState === WebSocket.OPEN) {
-      wss.send(JSON.stringify({
+    wss.send(JSON.stringify({
       type: "dice_roll",
       player: active,
       diceId: diceId, // Sending the diceId as well
@@ -890,12 +873,24 @@ const Game = () => {
     }
     else
     {
-      console.error("WebSocket is not open:", ws.readyState);
+      console.error("WebSocket is not open:", wss.readyState);
     }
   
     await addDice(diceId, dice);
     await removeZoom(active);
     setDie(dice);
+    const currentPlayer = playerRefs.current[active];
+    if (!currentPlayer.getStatus() && dice !== 6)
+    {
+          const nextPlayer = getNextPlayer(active)
+
+          wss?.send(JSON.stringify({
+            type: "turn_update",
+            active: active,
+            nextPlayer: nextPlayer // Call function here
+          })); 
+    }
+
     handleActivePlayer(dice);
   };
 
@@ -928,10 +923,11 @@ const Game = () => {
   };
 
   const getNextPlayer = (currentPlayer) => {
-    const playerOrder = { red: 'yellow', yellow: 'blue', blue: 'green', green: 'red' };
+    // const playerOrder = { red: 'yellow', yellow: 'blue', blue: 'green', green: 'red' };
       //  const playerOrder =  {red : 'green' , green : 'red'};
-      // let playerOrder = { red: "yellow", yellow: "blue", blue: "green", green: "red" };
+      // const playerOrder = { red: "yellow", yellow: "blue", blue: "green", green: "red" };
       
+      const  playerOrder  = {red : 'yellow' , yellow:'red'}
       // console.log("before intialization" , playerOrder)
        
       // playerOrder =  Order;
@@ -958,10 +954,20 @@ const Game = () => {
     }
   };
   const handleMove = (id) => {
+    console.log("Handle move called with id:", id);
+    
+    console.log("console.log called two times")
+    // if(pawn != active)
+    // {
+    //     return 
+    // }
 
-    if(pawn != active)
-    {
-        return 
+    console.log("this is  inside selected and sctive" , selectedColor , active);
+
+    if(selectedColor !==  active)
+    {   
+         console.log("i am not ready for move one");
+         return 
     }
 
     if (die === 0) {
@@ -985,70 +991,97 @@ const Game = () => {
     const betlastid=String(id).split("")
     const betlastidnew=betlastid[2]
     player  = (betlastidnew-1);
+
+    // if (ws && ws.readyState === WebSocket.OPEN) {
+    //   console.log("i am inside the  handle web Socket - logic")
+    //   ws.send(JSON.stringify({
+    //     type: "update",
+    //     payload: {
+    //       message: {
+    //         player: id,
+    //         cubes: die,
+    //         active: die === 6 ? active : getNextPlayer(active)
+    //       }
+    //     }
+    //   }));
+    // }
     
 
     sendMess(id , active)
     console.log("this is  lastid" , betlastidnew)
     
 
-    console.log("this is currentplayer" ,  currentPlayer.status);
+    // console.log("this is currentplayer" ,  currentPlayer.status);
     console.log("this  is playerNumber" , playerNumber);
     console.log("this is base id" ,  baseId)
+  
 
+    // if (!currentPlayer.getElementStatus(id - baseId)) {
+    //   // Only allow opening move if dice shows 6
+    //   console.log("token is not open")
+    //   if (die !== 6) {
+    //     console.log('Cannot open new token without rolling a 6');
+       
+    //     setButtonStates(prev => ({
+    //       ...prev,
+    //       [`btn${playerNumber}`]: false
+    //     }));
 
-    if (!currentPlayer.getElementStatus(id - baseId)) {
-      // Only allow opening move if dice shows 6
-      if (die !== 6) {
-        console.log('Cannot open new token without rolling a 6');
-        setButtonStates(prev => ({
-          ...prev,
-          [`btn${playerNumber}`]: false
-        }));
-        return;
-      }
+    //     return;
+    //   }
       
-      console.log(`Opening move for token ${id}`);
-      currentPlayer.openMove(id, gotiSound);
-      setDie(0);
+    //   console.log(`Opening move for token ${id}`);
+    //   currentPlayer.openMove(id, gotiSound);
+    //   setDie(0);
       
-      setButtonStates(prev => ({
-        ...prev,
-        [`btn${playerNumber}`]: false
-      }));
-      updateZoomHighlight(active);
-    } else {
-      console.log(`Moving existing token ${id} by ${die} steps`);
-      currentPlayer.movePlayer(
-        id, 
-        die, 
-        gotiSound, 
-        playerRefs, 
-        getPlayerButtonNumber, 
-        setButtonStates,
-        setShowPopup,
-        setPopupMessage
-      );
-      deactivateSubPlayer();
-      checkGameWinner();
+    //   setButtonStates(prev => ({
+    //     ...prev,
+    //     [`btn${playerNumber}`]: false
+    //   }));
+    //   updateZoomHighlight(active);
+      
+    // } else {
+    //   console.log(`Moving existing token ${id} by ${die} steps`);
+    //   currentPlayer.movePlayer(
+    //     id, 
+    //     die, 
+    //     gotiSound, 
+    //     playerRefs, 
+    //     getPlayerButtonNumber, 
+    //     setButtonStates,
+    //     setShowPopup,
+    //     setPopupMessage
+    //   );
+    //   deactivateSubPlayer();
+    //   checkGameWinner();
 
-      if (die !== 6) {
-        const nextPlayer = getNextPlayer(active);
-        setActive(nextPlayer);
-        const nextPlayerNumber = getPlayerButtonNumber(nextPlayer);
+    //   if (die !== 6) {
+    //     const nextPlayer = getNextPlayer(active);
+    //     setActive(nextPlayer);
+    //     const nextPlayerNumber = getPlayerButtonNumber(nextPlayer);
         
-        setButtonStates(prev => ({
-          ...prev,
-          [`btn${nextPlayerNumber}`]: false
-        }));
-        updateZoomHighlight(nextPlayer);
-      } else {
-        setButtonStates(prev => ({
-          ...prev,
-          [`btn${playerNumber}`]: false
-        }));
-        updateZoomHighlight(active);
-      }
-    }
+    //     setButtonStates(prev => ({
+    //       ...prev,
+    //       [`btn${nextPlayerNumber}`]: false
+    //     }));
+    //     updateZoomHighlight(nextPlayer);
+
+    //     //update-move-->
+    //     console.log("current player turn" , active, nextPlayer);
+    //     wss?.send(JSON.stringify({
+    //       type: "turn_update",
+    //       currentPlayer: active,
+    //       nextPlayer: nextPlayer // Call function here
+    //     })); 
+
+    //   } else {
+    //     setButtonStates(prev => ({
+    //       ...prev,
+    //       [`btn${playerNumber}`]: false
+    //     }));
+    //     updateZoomHighlight(active);
+    //   }
+    // }
   };
   
 
@@ -1116,7 +1149,7 @@ return (
   <div className="main-ludo">
     <div className="contain">
       <div className="dice-top">
-        <div className="control-dice"  style={{display: joinedPlayers?.red ? '' : 'none' }}  >
+        <div className="control-dice"   style={{display: joinedPlayers?.red ? '' : 'none' }}>
           <div className="one-goti" style={{ borderRight: 'none', borderRadius: '5px 0px 0px 5px' }}>
             <img src="./assets/ludo button(red ring).png" alt="" />
           </div>
@@ -1132,10 +1165,10 @@ return (
           </div>
         </div>
 
-        <div className="control-dice"    style={{ display: joinedPlayers.yellow ? '' : 'none' }} >
+        <div className="control-dice"   style={{ display: joinedPlayers.yellow ? '' : 'none'}}>
           <div className="diceImage" style={{ borderRight: 'none' }} id="goti2">
             Roll Dice
-          </div>     
+          </div>
           <button
             disabled={buttonStates.btn2}
             onClick={() => generateRandom('goti2', { btn1: true, btn2: true, btn3: true, btn4: true })}
@@ -1161,6 +1194,7 @@ return (
                     onClick={() => handleMove(101)}
                     disabled={false}
                     style={{display: joinedPlayers?.red ? '' : 'none' }}
+                    
 
                   >
                     <img src="./assets/ludo-button-red.png" alt="" />
@@ -1287,7 +1321,7 @@ return (
                     id="201"
                     onClick={() => handleMove(201)}
                        disabled={false}
-                    style={{ display: joinedPlayers.yellow ? '' : 'none'}}
+                       style={{ display: joinedPlayers.yellow ? '' : 'none'}}
                        
 
 
@@ -1312,7 +1346,7 @@ return (
                     id="202"
                     onClick={() => handleMove(202)}
                        disabled={false}
-                    style={{ display: joinedPlayers.yellow ? '' : 'none'}}
+                       style={{ display: joinedPlayers.yellow ? '' : 'none'}}
                   >
                     <img src="./assets/ludo-button-yellow.png" alt="yellow-goti" />
                     <img
@@ -1460,8 +1494,7 @@ return (
                     id="401"
                     onClick={() => handleMove(401)}
                        disabled={false}
-                       style={{ display: joinedPlayers.green ? '' : 'none' }}
-                    
+                    style={{ display: selectedColor === 'green' ? '' : 'none' }}
                   >
                     <img src="./assets/ludo-button-green.png" alt="green-goti" />
                     <img
@@ -1507,7 +1540,7 @@ return (
                     id="403"
                     onClick={() => handleMove(403)}
                        disabled={false}
-                    style={{ display: joinedPlayers.green ? '' : 'none' }}
+                       style={{ display: joinedPlayers.green ? '' : 'none' }}
                   >
                     <img src="./assets/ludo-button-green.png" alt="green-goti" />
                     <img
@@ -1529,7 +1562,7 @@ return (
                     id="404"
                     onClick={() => handleMove(404)}
                        disabled={false}
-                    style={{ display: joinedPlayers.green ? '' : 'none' }}
+                       style={{ display: joinedPlayers.green ? '' : 'none' }}
                   >
                     <img src="./assets/ludo-button-green.png" alt="green-goti" />
                     <img
@@ -1657,7 +1690,7 @@ return (
                     id="304"
                     onClick={() => handleMove(304)}
                        disabled={false}
-                    style={{ display: joinedPlayers.blue ? '' : 'none' }}
+                       style={{ display: joinedPlayers.blue ? '' : 'none' }}
                   >
                     <img src="./assets/ludo-button-blue.png" alt="" />
                     <img
@@ -1679,8 +1712,8 @@ return (
         </div>
       </div>
 
-      <div className="dice-top"     >
-        <div className="control-dice"     style={{ display: joinedPlayers.green ? '' : 'none' }}   >
+      <div className="dice-top"   style={{ display: joinedPlayers.green ? '' : 'none' }}  >
+        <div className="control-dice"        >
           <div className="one-goti" style={{ borderRight: 'none', borderRadius: '5px 0px 0px 5px' }}>
             <img src="./assets/ludo button(green ring).png" alt="" />
           </div>
@@ -1696,7 +1729,7 @@ return (
           </div>
         </div>
 
-        <div className="control-dice"  style={{ display: joinedPlayers.blue ? '' : 'none' }} >
+        <div className="control-dice"    style={{ display: joinedPlayers.blue ? '' : 'none' }} >
           <div className="diceImage" style={{ borderRight: 'none' }} id="goti3"  >
             Roll Dice
           </div>
@@ -1724,8 +1757,5 @@ return (
 };
 
 export default Game;
-
-
-// style={{ display: selectedColor === 'green' ? '' : 'none' }}
 
 
