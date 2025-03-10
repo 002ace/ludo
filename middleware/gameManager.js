@@ -80,24 +80,24 @@ class GameManager {
 
                         console.log("this  is updated query",updatedGame);
 
-                        const updateMessage = {
-                            type: "gameUpdate",
-                            roomCode: roomCode,
-                            payload: {
-                                message: {
-                                    gameState: updatedGame,
-                                    lastMove: {
-                                        playerId,
-                                        player,
-                                        position: parseInt(cubes),
-                                        timestamp: new Date()
-                                    }
-                                }
-                            }
-                        };
+                        // const updateMessage = {
+                        //     type: "gameUpdate",
+                        //     roomCode: roomCode,
+                        //     payload: {
+                        //         message: {
+                        //             gameState: updatedGame,
+                        //             lastMove: {
+                        //                 playerId,
+                        //                 player,
+                        //                 position: parseInt(cubes),
+                        //                 timestamp: new Date()
+                        //             }
+                        //         }
+                        //     }
+                        // };
 
 
-                        socket.send(JSON.stringify(updateMessage));
+                        // socket.send(JSON.stringify(updateMessage));
                         console.log("boardcast work successfull");
                         
                        

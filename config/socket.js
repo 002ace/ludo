@@ -93,7 +93,7 @@ wss.on('connection', (socket) => {
                             // allSocket[i].send(JSON.stringify({type: "playerDetails", userDetails}));
 
 
-                            //    console.log(parseMessage.payload.message);
+                               console.log("update-message" , parseMessage.payload.message);
                         }
                   }
          }
