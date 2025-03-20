@@ -4,12 +4,15 @@ const jwt  = require("jsonwebtoken");
 const FormData = require('form-data');
 const axios = require('axios');
 const fs = require('fs');
+const otpGenerator = require('otp-generator');
 
 dotenv.config();
 
 let generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000);
 };
+
+
 
 
 
@@ -48,13 +51,30 @@ exports.sendOtp = async (req, res) => {
 
 exports.signup = async (req, res) => {
   try {
-    const { userName, phone, otp } = req.body;
-
+    const { userName, phone, otp  } = req.body;
+    let{referby} = req.body ;
+    const adminReferCode  = "ABC1234"
     if (( !userName || !phone || !otp)) {
       return res.status(500).json({
         message: "all field are required",
       });
     }
+
+    if(!referby)
+    {
+         referby =  adminReferCode ;
+    }
+
+    const   refercode  =   otpGenerator.generate(6, { 
+      upperCaseAlphabets: true, 
+      lowerCaseAlphabets: false, 
+      specialChars: false 
+    });
+
+
+
+
+
 
     const userExist = await User.findOne({ phone });
     console.log(userExist);
@@ -79,6 +99,8 @@ exports.signup = async (req, res) => {
               userName: userName,
               status: '1',
               userId : lastUser.userId + 1,
+              refercode:refercode,
+              referedBy:referby,
               token:token
             },
             { new: true } // Returns the updated document

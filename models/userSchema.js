@@ -24,8 +24,12 @@ const userSchema = new mongoose.Schema(
     code: {
       type: Number,
     },
-    inviteCode: {
-      type: Number,
+    refercode: {
+      type: String,
+    },
+    referedBy: {
+      type:String,
+       
     },
     otp: {
       type: String,
@@ -37,7 +41,7 @@ const userSchema = new mongoose.Schema(
     }, 
     role: {
       type: String,
-      enum: ["admin", "user"],
+      enum: ["admin", "user" , "agent"],
       default: "user"
       
     },
@@ -49,6 +53,9 @@ const userSchema = new mongoose.Schema(
     },
     betAmount : {
          type:String,
+    },
+    amount:{
+       type:String,
     }
   },
   { timestamps: true }
