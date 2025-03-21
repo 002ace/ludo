@@ -17,7 +17,7 @@ const   transactionDetails =   new mongoose.Schema({
           remark:{
               
               type:String,
-              enum:["withdrawl" , "deposit"]
+              // enum:["withdrawl" , "deposit"]
 
           },
           time: {

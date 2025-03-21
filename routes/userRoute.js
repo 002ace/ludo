@@ -3,7 +3,7 @@ const express  =  require("express");
 const  router =  express.Router();
 const{sendOtp , signup  , login , logout ,getAllUser , getUserById , updateUserDetails,getGameDetails}  =  require("../controllers/userAuth.js/registerUser")
 const{auth}  =  require("../middleware/auth");
-const {recharge , getAllrecharge , acceptOrReject}  = require("../controllers/userAuth.js/recharge");
+const {recharge , getAllrecharge , acceptOrReject,addBankDetails,withdrawl,withdrawlRequest}  = require("../controllers/userAuth.js/recharge");
 
 
 router.post("/sendotp" , sendOtp)
@@ -30,6 +30,15 @@ router.post("/recharge" ,auth,recharge);
 router.get("/rechargedetails" , getAllrecharge);
 
 router.post("/status/:status/:requestId",acceptOrReject);
+
+
+ router.post("/withdrawl",auth,withdrawl)
+
+router.post("/bankdetails",auth ,addBankDetails);
+
+
+router.post('/withdrawlrequest/:status/:requestId' ,auth,withdrawlRequest);
+
 
 
 

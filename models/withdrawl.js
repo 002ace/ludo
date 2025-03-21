@@ -7,11 +7,11 @@ const  withdrawlSchema =  new mongoose.Schema({
                        ref: "User", 
                        required: true
         },
-          userName:{
+        userName:{
                      
-                     type:String ,
-          },
-          bankName:{
+            type:String ,
+        },
+        bankName:{
             type:String ,
         },
         ifscCode:{
@@ -28,6 +28,14 @@ const  withdrawlSchema =  new mongoose.Schema({
                 hour12: false 
             })
           },
+        amount:{
+             type:Number,
+        },
+        status:{
+            type:String,
+            enum:["pending" , "accepted" , "rejected"],
+            default:"pending"
+        }
         
 
 
