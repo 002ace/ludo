@@ -5,6 +5,9 @@ const  Transaction = require("../../models/transaction");
 const { findById } = require("../../models/gameSchema");
 const Bank    = require("../../models/bankSchema");
 const Withdrawl  =  require("../../models/withdrawl");
+const otpGenerator = require('otp-generator');
+const Giftcode = require("../../models/giftCodeSchema");
+const UsedGiftCode =  require("../../models/useGiftCodeSchema");
 
 exports.recharge  = async(req,res)=>{
      try
@@ -359,5 +362,191 @@ exports.withdrawlRequest  = async(req,res)=>{
 }
 
 
+
+
+//createGift - code ;
+
+exports.createGiftCode  =  async(req,res)=>{
+    try
+    {       
+            
+            const{giftcodeCount,giftCodeAmount,recharge}  =  req.body ;
+            const role  =  req.user.role  ;
+            if(!giftcodeCount || !giftCodeAmount || !recharge)
+            {
+                   return res.status(400).json({
+                        success:false,
+                        message:"all field required"
+                   })
+            }
+
+            if(role  !== "admin")
+            {
+                  return res.status(400).json({
+                        success:false ,
+                        message:"this  is pro"
+                  })
+            }
+
+            const  giftcode  =   otpGenerator.generate(9, { 
+                  upperCaseAlphabets: true, 
+                  lowerCaseAlphabets: false, 
+                  specialChars: false 
+             });
+
+            const giftCodeDetails  =  await Giftcode.create({
+                                      giftCode:giftcode,
+                                      giftCodeAmount:giftCodeAmount,
+                                      recharge:recharge,
+                                      giftcodeCount:giftcodeCount
+
+
+                                      }) 
+
+            return res.status(200).json({
+                   success:true,
+                   data:giftCodeDetails,
+                    
+            })
+      
+
+    }
+    catch(error)
+    {    
+        return res.status(500).json({
+            message: "failed request",
+            error: error.message,
+          });
+
+
+    }
+}
+
+
+
+
+exports.useGiftCode = async(req,res)=>{
+      try
+      {  
+               const userId  =  req.user._id;
+               const  userName = req.user.userName
+               const{giftCode}  =    req.body ;
+
+               const giftCodeDetails = await Giftcode.findOne({giftCode:giftCode});
+               if(!giftCodeDetails ||  giftCodeDetails.giftcodeCount < 1)
+               {   
+                       return res.status(400).json({
+                            success:false,
+                            message:"invalid  gift code"
+                       })
+                     
+               }
+
+               const amount  =  giftCodeDetails.giftCodeAmount;
+               const giftCodeToAdd = { code: giftCode, amount };
+               const userExistOrNOt  = await UsedGiftCode.findOne({user:userId});
+
+               if(!userExistOrNOt)
+               {
+                  const  useGiftCode  =  await UsedGiftCode.create({user:userId , giftCode: [giftCodeToAdd]})
+               }
+               else
+               {
+
+                const details = await UsedGiftCode.findOne({ user: userId, giftCode: { $elemMatch: {code: giftCode } }});
+
+                console.log(details);
+                
+
+                  if(details)
+                  {   
+                        return res.status(400).json({
+                           success:false,
+                          message:"you have already used this codde"
+                        })
+                    
+                  }
+
+                  await UsedGiftCode.findOneAndUpdate({user:userId} ,{ $push: {giftCode:giftCodeToAdd}} , {new:true});
+
+                  await  User.findOneAndUpdate({_id:userId} , { $inc: { money:+amount } }, {new:true});
+
+                  await Transaction.create({user:userId,userName:userName,amount:amount,remark:"gift-card "})
+               }
+
+               await Giftcode.findOneAndUpdate({ giftCode: giftCode }, { $inc: { giftcodeCount: -1 } });
+
+                 
+               return res.status(200).json({
+                    success:true,
+                    message:"GIft code access successfully"
+
+               })
+              
+           
+      }
+      catch(error)
+      {  
+        return res.status(500).json({
+            message: "failed request",
+            error: error.message,
+          });
+
+      }
+}
+
+
+//increase  or decrease  amount 
+exports.increaseOrdecrease  =  async(req,res)=>{
+      try
+      {  
+             const{phone,amount,option}   = req.body ;
+
+             if(!phone  || !amount  || !option)
+             {
+                   return res.status(400).json({
+                          success:false,
+                          message:"all  fields are required"
+                   })
+             }
+
+
+             const findUser = await User.findOne({phone:phone  , status:"1"});
+
+             if(!findUser)
+             {
+                   return  res.status(400).json({
+                        success:false,
+                        message:"user does not exist"
+                        
+                   })
+             }
+
+             if(option === "increase")
+             {
+                await  User.findOneAndUpdate({_id:findUser._id} , { $inc: { money:+amount } }, {new:true});
+             }
+             else if(option === "decrease")
+             {
+                await  User.findOneAndUpdate({_id:findUser._id} , { $inc: { money:-amount } }, {new:true});
+             }
+
+
+             return  res.status(200).json({
+                    success:true,
+                    message:`amount ${statusbar}`
+             })
+
+
+      }
+      catch(error)
+      {   
+          return res.status(500).json({
+            message: "failed request",
+            error: error.message,
+          });
+
+      }
+}
 
 

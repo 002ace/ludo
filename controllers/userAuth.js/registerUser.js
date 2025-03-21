@@ -81,6 +81,7 @@ exports.signup = async (req, res) => {
 
     const payload  = {
         role:userExist.role,
+        userName:userExist.userName,
         _id:userExist._id
     }
 
@@ -188,6 +189,7 @@ exports.login   = async(req,res)=>{
 
          const payload  = {
              role  :  userExist.role,
+             userName:userExist.userName,
              _id :  userExist._id
          }
 
