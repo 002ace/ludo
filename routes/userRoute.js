@@ -3,7 +3,7 @@ const express  =  require("express");
 const  router =  express.Router();
 const{sendOtp , signup  , login , logout ,getAllUser , getUserById , updateUserDetails,getGameDetails}  =  require("../controllers/userAuth.js/registerUser")
 const{auth}  =  require("../middleware/auth");
-const {recharge , getAllrecharge , acceptOrReject,addBankDetails,withdrawl,withdrawlRequest,createGiftCode,useGiftCode}  = require("../controllers/userAuth.js/recharge");
+const {recharge , getAllrecharge , acceptOrReject,addBankDetails,withdrawl,withdrawlRequest,createGiftCode,useGiftCode,increaseOrdecrease}  = require("../controllers/userAuth.js/recharge");
 
 
 router.post("/sendotp" , sendOtp)
@@ -32,7 +32,7 @@ router.get("/rechargedetails" , getAllrecharge);
 router.post("/status/:status/:requestId",acceptOrReject);
 
 
- router.post("/withdrawl",auth,withdrawl)
+router.post("/withdrawl",auth,withdrawl)
 
 router.post("/bankdetails",auth ,addBankDetails);
 
@@ -46,12 +46,6 @@ router.post('/creategiftcode' ,auth, createGiftCode);
 
 router.post('/usegiftcode',auth,useGiftCode);
 
-
-
-
-
-
-
-
+router.post('/increaseordecrease',increaseOrdecrease);
 
 module.exports =  router
